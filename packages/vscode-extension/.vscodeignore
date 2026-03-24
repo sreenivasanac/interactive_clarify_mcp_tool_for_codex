@@ -1,0 +1,7 @@
+src/**
+node_modules/**
+tsconfig.json
+*.ts
+*.tsx
+!dist/**
+!webview-dist/**

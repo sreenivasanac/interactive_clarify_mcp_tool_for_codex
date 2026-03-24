@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import type { QuestionItem } from "@interactive-clarify/shared";
+import { getQuestionKey } from "./questionKey";
 
 interface TabBarProps {
   questions: QuestionItem[];
@@ -33,8 +34,9 @@ export const TabBar: React.FC<TabBarProps> = ({
 
         return (
           <button
-            key={q.header}
+            key={getQuestionKey(q, index)}
             ref={(el) => { tabRefs.current[index] = el; }}
+            type="button"
             role="tab"
             aria-selected={active}
             aria-controls={`ic-panel-${index}`}

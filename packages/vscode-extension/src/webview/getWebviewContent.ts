@@ -1,6 +1,4 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { QuestionItem } from "@interactive-clarify/shared";
 
 /**
@@ -26,19 +24,10 @@ export function getWebviewContent(
   webview: vscode.Webview,
   questions: QuestionItem[],
   panelJsUri: vscode.Uri,
-  extensionPath: string
+  panelCssUri: vscode.Uri
 ): string {
   const nonce = getNonce();
   const cspSource = webview.cspSource;
-
-  // Read the CSS file and inline it to guarantee it loads
-  let cssContent = "";
-  try {
-    const cssPath = path.join(extensionPath, "webview-dist", "panel.css");
-    cssContent = fs.readFileSync(cssPath, "utf-8");
-  } catch {
-    // CSS file missing — styles will be unstyled but functional
-  }
 
   // Escape the questions JSON for safe embedding in a script tag
   const questionsJson = JSON.stringify(questions)
@@ -57,9 +46,9 @@ export function getWebviewContent(
              script-src 'nonce-${nonce}';
              font-src ${cspSource};">
   <title>Interactive Clarify</title>
-  <style>${cssContent}</style>
+  <link rel="stylesheet" href="${panelCssUri.toString()}">
 </head>
-<body>
+<body class="vscode-body">
   <div id="root"></div>
   <script nonce="${nonce}">
     window.__INTERACTIVE_CLARIFY_QUESTIONS__ = ${questionsJson};

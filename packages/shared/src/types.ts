@@ -10,6 +10,8 @@ export interface OptionItem {
 
 /** A single clarifying question with multiple options. */
 export interface QuestionItem {
+  /** Optional stable identifier for internal state and rendering. */
+  id?: string;
   /** The full question text (markdown supported). */
   question: string;
   /** Short tab label, max 12 characters (e.g. "Auth method", "Database"). */
@@ -31,4 +33,12 @@ export interface InteractiveClarifyOutput {
   answers: Record<string, string | string[]>;
   /** Optional per-question annotations (notes, etc). */
   annotations?: Record<string, { notes?: string }>;
+}
+
+/**
+ * Returns a stable internal key for a question. Falls back to index to preserve
+ * behavior for older clients that do not send an explicit id yet.
+ */
+export function getQuestionKey(question: QuestionItem, index: number): string {
+  return question.id ?? `${index}:${question.header}`;
 }

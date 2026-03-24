@@ -44,7 +44,12 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
   };
 
   return (
-    <div className="ic-question-panel" role="tabpanel" id={`ic-panel-${index}`}>
+    <div
+      className="ic-question-panel"
+      role="tabpanel"
+      id={`ic-panel-${index}`}
+      aria-labelledby={`ic-tab-${index}`}
+    >
       <div className="ic-question-counter">
         Question {index + 1} of {total}
       </div>
@@ -58,14 +63,14 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
         </div>
       )}
 
-      <div className="ic-options">
+      <div className="ic-options" role={isMulti ? "group" : "radiogroup"} aria-label={question.header}>
         {question.options.map((option, optIdx) => {
           const isSelected = selectedLabels.includes(option.label);
-          const isRecommended = optIdx === 0 && option.label.toLowerCase().includes("recommend");
 
           return (
             <button
               key={option.label}
+              type="button"
               className={[
                 "ic-option",
                 isSelected && "ic-option--selected",
@@ -73,7 +78,8 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => handleClick(option)}
-              aria-pressed={isSelected}
+              role={isMulti ? "checkbox" : "radio"}
+              aria-checked={isSelected}
             >
               <div className="ic-indicator">
                 {isMulti ? (
@@ -89,9 +95,6 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
               <div className="ic-option__body">
                 <div className="ic-option__label">
                   {option.label}
-                  {isRecommended && (
-                    <span className="ic-option__recommended">Recommended</span>
-                  )}
                 </div>
                 <div className="ic-option__desc">{option.description}</div>
               </div>

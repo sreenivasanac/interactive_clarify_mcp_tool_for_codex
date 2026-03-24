@@ -63,7 +63,9 @@ export function askViaIpc(input: InteractiveClarifyInput): Promise<InteractiveCl
     });
 
     socket.on("close", () => {
-      settle(() => reject(new Error("IPC socket closed before response")));
+      if (!settled) {
+        settle(() => reject(new Error("IPC socket closed before response")));
+      }
     });
 
     socket.connect(socketPath, () => {
@@ -112,4 +114,13 @@ export function askViaIpc(input: InteractiveClarifyInput): Promise<InteractiveCl
       socket.on("data", reader);
     });
   });
+}
+
+export function isIpcUnavailableError(err: unknown): boolean {
+  if (err instanceof Error && err.message === "IPC connection timeout") {
+    return true;
+  }
+
+  const code = (err as NodeJS.ErrnoException | undefined)?.code;
+  return code === "ENOENT" || code === "ECONNREFUSED" || code === "EACCES";
 }

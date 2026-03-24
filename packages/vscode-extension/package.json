@@ -4,6 +4,7 @@
   "description": "Rich UI for AI coding agent clarifying questions via MCP",
   "version": "0.1.0",
   "publisher": "interactive-clarify",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.95.0"
   },

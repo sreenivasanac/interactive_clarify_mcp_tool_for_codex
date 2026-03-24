@@ -15,6 +15,7 @@ server.tool(
   {
     questions: z.array(
       z.object({
+        id: z.string().optional().describe("Optional stable identifier for this question."),
         question: z.string().describe("The full question text (markdown supported)."),
         header: z
           .string()

@@ -120,6 +120,8 @@ export class IpcServer extends EventEmitter {
         const respond = (response: QuestionResponse): void => {
           if (!socket.destroyed) {
             writeMessage(socket, response);
+            // Each IPC connection handles a single request/response pair.
+            socket.end();
           }
         };
         this.emit("question", request, respond);

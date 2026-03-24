@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { QuestionItem } from "@interactive-clarify/shared";
 import { TabBar } from "./TabBar";
 import { QuestionPanel } from "./QuestionPanel";
 import { SubmitBar } from "./SubmitBar";
+import { getQuestionKey } from "./questionKey";
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -17,20 +18,29 @@ interface AppProps {
 
 export const App: React.FC<AppProps> = ({ questions, vscodeApi }) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [answersByKey, setAnswersByKey] = useState<Record<string, string | string[]>>({});
+  const autoAdvanceTimerRef = useRef<number | null>(null);
+
+  const questionKeys = useMemo(
+    () => questions.map((question, index) => getQuestionKey(question, index)),
+    [questions],
+  );
 
   const activeQuestion = questions[activeTab];
+  const activeQuestionKey = activeQuestion ? questionKeys[activeTab] : undefined;
+
+  const hasAnswer = useCallback((answer: string | string[] | undefined): boolean => {
+    if (answer === undefined) return false;
+    return Array.isArray(answer) ? answer.length > 0 : answer !== "";
+  }, []);
 
   const isAnswered = useCallback(
     (index: number): boolean => {
-      const header = questions[index]?.header;
-      if (!header) return false;
-      const answer = answers[header];
-      if (answer === undefined) return false;
-      if (Array.isArray(answer)) return answer.length > 0;
-      return answer !== "";
+      const questionKey = questionKeys[index];
+      if (!questionKey) return false;
+      return hasAnswer(answersByKey[questionKey]);
     },
-    [answers, questions],
+    [answersByKey, hasAnswer, questionKeys],
   );
 
   const answeredCount = questions.filter((_, i) => isAnswered(i)).length;
@@ -38,35 +48,48 @@ export const App: React.FC<AppProps> = ({ questions, vscodeApi }) => {
 
   /** Find the next unanswered question after `from`, wrapping around. */
   const findNextUnanswered = useCallback(
-    (from: number): number | null => {
+    (from: number, answers: Record<string, string | string[]>): number | null => {
       for (let i = 1; i <= questions.length; i++) {
         const idx = (from + i) % questions.length;
-        if (!isAnswered(idx)) return idx;
+        const questionKey = questionKeys[idx];
+        if (questionKey && !hasAnswer(answers[questionKey])) return idx;
       }
       return null;
     },
-    [isAnswered, questions.length],
+    [hasAnswer, questionKeys, questions.length],
   );
 
   const handleAnswer = useCallback(
     (value: string | string[]) => {
-      if (!activeQuestion) return;
-      setAnswers((prev) => ({
+      if (!activeQuestion || !activeQuestionKey) return;
+
+      if (autoAdvanceTimerRef.current !== null) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
+      }
+
+      const nextAnswers = {
+        ...answersByKey,
+        [activeQuestionKey]: value,
+      };
+
+      setAnswersByKey((prev) => ({
         ...prev,
-        [activeQuestion.header]: value,
+        [activeQuestionKey]: value,
       }));
 
       // For single-select, auto-advance to next unanswered question after a short delay
       if (!activeQuestion.multiSelect && typeof value === "string") {
-        setTimeout(() => {
-          const next = findNextUnanswered(activeTab);
+        autoAdvanceTimerRef.current = window.setTimeout(() => {
+          const next = findNextUnanswered(activeTab, nextAnswers);
           if (next !== null) {
             setActiveTab(next);
           }
+          autoAdvanceTimerRef.current = null;
         }, 250);
       }
     },
-    [activeQuestion, activeTab, findNextUnanswered],
+    [activeQuestion, activeQuestionKey, activeTab, answersByKey, findNextUnanswered],
   );
 
   const goToPrev = useCallback(() => {
@@ -95,12 +118,29 @@ export const App: React.FC<AppProps> = ({ questions, vscodeApi }) => {
       }
     };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      if (autoAdvanceTimerRef.current !== null) {
+        window.clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
   }, [goToPrev, goToNext, vscodeApi]);
 
+  const serializedAnswers = useMemo<Record<string, string | string[]>>(
+    () =>
+      questions.reduce<Record<string, string | string[]>>((acc, question, index) => {
+        const answer = answersByKey[questionKeys[index]];
+        if (answer !== undefined) {
+          acc[question.header] = answer;
+        }
+        return acc;
+      }, {}),
+    [answersByKey, questionKeys, questions],
+  );
+
   const handleSubmit = useCallback(() => {
-    vscodeApi.postMessage({ type: "submit", answers });
-  }, [answers, vscodeApi]);
+    vscodeApi.postMessage({ type: "submit", answers: serializedAnswers });
+  }, [serializedAnswers, vscodeApi]);
 
   const handleCancel = useCallback(() => {
     vscodeApi.postMessage({ type: "cancel" });
@@ -139,7 +179,7 @@ export const App: React.FC<AppProps> = ({ questions, vscodeApi }) => {
           index={activeTab}
           total={questions.length}
           question={activeQuestion}
-          answer={answers[activeQuestion.header]}
+          answer={activeQuestionKey ? answersByKey[activeQuestionKey] : undefined}
           onAnswer={handleAnswer}
         />
       )}
@@ -147,6 +187,7 @@ export const App: React.FC<AppProps> = ({ questions, vscodeApi }) => {
       <SubmitBar
         activeTab={activeTab}
         total={questions.length}
+        answeredCount={answeredCount}
         allAnswered={allAnswered}
         onPrev={goToPrev}
         onNext={goToNext}

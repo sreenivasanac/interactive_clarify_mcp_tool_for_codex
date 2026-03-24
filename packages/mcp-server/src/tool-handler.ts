@@ -1,15 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { InteractiveClarifyInput, InteractiveClarifyOutput } from "@interactive-clarify/shared";
-import { askViaIpc } from "./ipc-client.js";
-import { askViaTui } from "./tui/render-tui.js";
-
-/** Thrown when the user explicitly cancels (close tab, Esc, Cancel button). */
-class UserCancelledError extends Error {
-  constructor(message = "User cancelled") {
-    super(message);
-    this.name = "UserCancelledError";
-  }
-}
+import { askViaIpc, isIpcUnavailableError } from "./ipc-client.js";
+import { askViaBrowser } from "./browser-fallback.js";
 
 /**
  * Handle an interactive_clarify tool call.
@@ -44,13 +36,28 @@ export async function handleInteractiveClarify(
       };
     }
 
-    // IPC connection failed — fall back to TUI
-    try {
-      output = await askViaTui(input);
-    } catch (tuiErr: unknown) {
-      const tuiMessage = tuiErr instanceof Error ? tuiErr.message : String(tuiErr);
+    // Only fall back when the extension path is unavailable, not when it failed mid-request.
+    if (!isIpcUnavailableError(err)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              status: "error",
+              message,
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
 
-      if (tuiMessage === "User cancelled") {
+    try {
+      output = await askViaBrowser(input);
+    } catch (browserErr: unknown) {
+      const browserMessage = browserErr instanceof Error ? browserErr.message : String(browserErr);
+
+      if (browserMessage === "User cancelled") {
         return {
           content: [
             {
@@ -65,7 +72,7 @@ export async function handleInteractiveClarify(
         };
       }
 
-      throw tuiErr;
+      throw browserErr;
     }
   }
 

@@ -1,6 +1,6 @@
 # Interactive Clarify
 
-A universal **"Ask User Questions"** MCP tool for AI coding agents. When an AI agent encounters ambiguity, it calls the `interactive_clarify` tool to present structured clarifying questions with multiple options — rendered either in a **VS Code webview panel** or a **terminal TUI** fallback.
+A universal **"Ask User Questions"** MCP tool for AI coding agents. When an AI agent encounters ambiguity, it calls the `interactive_clarify` tool to present structured clarifying questions with multiple options — rendered either in a **VS Code webview panel** or a **browser fallback**.
 
 Works with **Codex CLI**, **Claude Code**, **Factory Droid**, and any MCP-compatible agent.
 
@@ -12,7 +12,7 @@ AI Agent (Codex / Claude Code / Factory Droid)
   ▼
 MCP Server (Node.js)
   │  Tries Unix socket IPC ──→ VS Code Extension ──→ Webview Panel
-  │  Falls back to ──→ Terminal TUI (Ink, renders to stderr)
+  │  Falls back to ──→ Local Browser Window
   ▼
 Returns JSON answers to agent
 ```
@@ -23,7 +23,7 @@ Returns JSON answers to agent
 - **Rich options** — Each option has a label, description, and optional markdown preview
 - **Single & multi-select** — Support for both exclusive and multi-choice questions
 - **VS Code themed** — Webview uses native VS Code CSS variables for dark/light theme
-- **Terminal fallback** — Ink-based TUI renders to stderr when VS Code isn't available
+- **Browser fallback** — Opens the same React UI in your default browser when VS Code isn't available
 - **Universal MCP** — Any MCP-compatible agent can use it
 
 ## Project Structure
@@ -32,7 +32,6 @@ Returns JSON answers to agent
 packages/
 ├── shared/              # Shared types & IPC protocol
 ├── mcp-server/          # MCP server (stdio transport)
-│   └── src/tui/         # Ink terminal fallback
 └── vscode-extension/    # VS Code extension + React webview
     └── src/webview/panel/
 ```
@@ -43,7 +42,7 @@ packages/
 
 - Node.js 18+
 - pnpm 9+
-- VS Code (optional, for webview UI — terminal TUI works without it)
+- VS Code (optional, for in-editor webview UI)
 
 ### 1. Build
 
@@ -77,18 +76,18 @@ The extension activates automatically on VS Code startup and listens for incomin
 
 ### 4. Test it
 
-**Without VS Code (terminal TUI):**
+**Without VS Code (browser fallback):**
 
 ```bash
 # With Codex CLI
 codex "Use the interactive_clarify tool to ask me which database I prefer — PostgreSQL, MySQL, or SQLite — before suggesting an implementation"
 ```
 
-The questions will render as an interactive TUI directly in your terminal (on stderr).
+The questions will open in your default browser using the same React UI.
 
 **With VS Code extension installed:**
 
-Run the same command — questions will appear in a VS Code webview panel instead of the terminal.
+Run the same command — questions will appear in a VS Code webview panel instead of the browser.
 
 **Smoke test (no agent needed):**
 
@@ -100,7 +99,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"interactive_clarify","arguments":{"questions":[{"question":"Which database should we use?","header":"Database","options":[{"label":"PostgreSQL","description":"Relational DB with extensions"},{"label":"SQLite","description":"Lightweight file-based DB"}],"multiSelect":false}]}}}' | node packages/mcp-server/dist/bin/ask-user-mcp.js
 ```
 
-This triggers the terminal TUI so you can verify the tab-based question UI works.
+This opens the browser fallback so you can verify the tab-based question UI works.
 
 ## Agent Configuration
 
@@ -200,7 +199,7 @@ Returns:
 1. Agent calls `interactive_clarify` MCP tool with questions
 2. MCP server tries to connect to VS Code extension via Unix socket IPC (`~/.interactive-clarify/ipc.sock`)
 3. **If VS Code is running** (with extension installed): Extension opens a webview panel with tab-based question UI. User answers, responses flow back via IPC.
-4. **If VS Code is unavailable**: MCP server renders an Ink-based terminal TUI on stderr. (stdout is reserved for MCP JSON-RPC — the TUI intentionally renders to stderr to avoid corrupting the protocol stream.)
+4. **If VS Code is unavailable**: MCP server starts a short-lived local HTTP server and opens the same React UI in your default browser.
 5. MCP server returns JSON answers to the agent, which continues execution with the user's choices.
 
 ## Environment Variables
@@ -221,10 +220,10 @@ Run `pnpm install` in the `packages/vscode-extension` directory first, or use `n
 - Ensure no stale socket file exists: `rm ~/.interactive-clarify/ipc.sock` and restart VS Code.
 - If multiple VS Code windows are open, only the first one binds the socket.
 
-### Terminal TUI not rendering
+### Browser fallback not opening
 
-- The TUI renders to **stderr**, not stdout. If piping output, make sure stderr is visible.
-- In Codex CLI's "Full Auto" mode, stderr may be suppressed — use "Suggest" or "Auto-edit" mode instead.
+- Ensure your system can open local URLs via `open` (macOS), `xdg-open` (Linux), or `start` (Windows).
+- Make sure `packages/vscode-extension/webview-dist/panel.js` and `panel.css` exist by running `pnpm -r build`.
 
 ### Agent doesn't use the tool
 

@@ -59,12 +59,15 @@ export class WebviewManager {
     const panelJsUri = panel.webview.asWebviewUri(
       vscode.Uri.file(path.join(webviewDistPath, "panel.js"))
     );
+    const panelCssUri = panel.webview.asWebviewUri(
+      vscode.Uri.file(path.join(webviewDistPath, "panel.css"))
+    );
 
     panel.webview.html = getWebviewContent(
       panel.webview,
       questions,
       panelJsUri,
-      this.context.extensionPath
+      panelCssUri
     );
 
     // Handle messages from the webview

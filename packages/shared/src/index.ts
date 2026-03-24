@@ -4,6 +4,7 @@ export type {
   InteractiveClarifyInput,
   InteractiveClarifyOutput,
 } from "./types.js";
+export { getQuestionKey } from "./types.js";
 
 export {
   IPC_CONNECT_TIMEOUT,

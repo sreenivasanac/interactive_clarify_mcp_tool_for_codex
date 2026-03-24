@@ -3,6 +3,7 @@ import React from "react";
 interface SubmitBarProps {
   activeTab: number;
   total: number;
+  answeredCount: number;
   allAnswered: boolean;
   onPrev: () => void;
   onNext: () => void;
@@ -13,6 +14,7 @@ interface SubmitBarProps {
 export const SubmitBar: React.FC<SubmitBarProps> = ({
   activeTab,
   total,
+  answeredCount,
   allAnswered,
   onPrev,
   onNext,
@@ -57,7 +59,7 @@ export const SubmitBar: React.FC<SubmitBarProps> = ({
             type="button"
             title={allAnswered ? "Submit all answers" : "Answer all questions first"}
           >
-            {allAnswered ? "Submit →" : `Submit (${total - (total - activeTab)} / ${total})`}
+            {allAnswered ? "Submit →" : `Submit (${answeredCount} / ${total})`}
           </button>
         </div>
       </div>
