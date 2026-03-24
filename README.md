@@ -19,9 +19,15 @@ Returns JSON answers to agent
 
 ## Features
 
-- **Tab-based navigation** — Questions shown as tabs, navigate with click or keyboard
-- **Rich options** — Each option has a label, description, and optional markdown preview
+- **Tab-based navigation** — Questions shown as tabs, with click and keyboard navigation
+- **Rich options** — Each option has a label, description, and optional preview content
+- **Recommended path** — The first option is visually marked as recommended, with rationale shown in preview
 - **Single & multi-select** — Support for both exclusive and multi-choice questions
+- **Freeform answer path** — Every question supports a selectable freeform answer
+- **Per-answer notes** — Selected structured answers can carry optional notes from the preview panel
+- **Partial submit** — Submission is allowed even when not every question is answered
+- **Draft restoration** — In-progress answers survive reloads for the same question set
+- **Late-submit recovery** — If the live MCP requester times out or disconnects, VS Code can still save the submitted response for later retrieval
 - **VS Code themed** — Webview uses native VS Code CSS variables for dark/light theme
 - **Browser fallback** — Opens the same React UI in your default browser when VS Code isn't available
 - **Universal MCP** — Any MCP-compatible agent can use it
@@ -168,17 +174,19 @@ Any MCP-compatible client using stdio transport:
 
 ## Tool Schema
 
-The `interactive_clarify` tool accepts:
+### `interactive_clarify`
+
+Accepts:
 
 ```typescript
 {
   questions: Array<{
-    question: string;       // Full question text (markdown supported)
+    question: string;       // Plain-text question prompt shown in the UI
     header: string;         // Short tab label (max 12 chars)
     options: Array<{
       label: string;        // Option display text (1-5 words)
       description: string;  // What this option means
-      preview?: string;     // Optional markdown preview content
+      preview?: string;     // Optional preview content
     }>;
     multiSelect?: boolean;  // Allow multiple selections (default: false)
   }>;
@@ -189,8 +197,54 @@ Returns:
 
 ```typescript
 {
-  answers: Record<string, string | string[]>;  // header → selected answer(s)
-  annotations?: Record<string, { notes?: string }>;
+  answers: Record<string, string | string[]>;  // legacy header → selected answer(s)
+  answerItems?: Array<{
+    id?: string;
+    header: string;
+    answer: string | string[];
+  }>;                                          // stable ordered answers
+  annotations?: Record<string, {
+    notes?: string;
+    optionNotes?: Record<string, string>;
+  }>;
+}
+```
+
+Behavior notes:
+
+- Unanswered questions are returned as `"Question not answered"` on submit.
+- Freeform answers are returned as normal string answers.
+- Optional notes for selected structured answers are returned under `annotations[*].optionNotes`.
+
+### `interactive_clarify_get_late_response`
+
+Retrieves a saved late response written by the VS Code extension after the original live MCP request had already timed out or disconnected.
+
+Accepts:
+
+```typescript
+{
+  requestId?: string; // optional original interactive_clarify request id
+}
+```
+
+Returns the saved late response record, including:
+
+```typescript
+{
+  requestId: string;
+  createdAt: string;
+  questions: QuestionItem[];
+  answers: Record<string, string | string[]>;
+  answerItems?: Array<{
+    id?: string;
+    header: string;
+    answer: string | string[];
+  }>;
+  annotations?: Record<string, {
+    notes?: string;
+    optionNotes?: Record<string, string>;
+  }>;
 }
 ```
 
@@ -201,6 +255,13 @@ Returns:
 3. **If VS Code is running** (with extension installed): Extension opens a webview panel with tab-based question UI. User answers, responses flow back via IPC.
 4. **If VS Code is unavailable**: MCP server starts a short-lived local HTTP server and opens the same React UI in your default browser.
 5. MCP server returns JSON answers to the agent, which continues execution with the user's choices.
+
+Late-submit flow:
+
+1. If the upstream MCP caller times out or disconnects while the VS Code panel is still open, the panel switches into a subtle late-submit mode.
+2. The user can still submit from VS Code.
+3. The extension saves the submitted response to a local file instead of losing it.
+4. The coding agent / CLI can later retrieve that saved response using `interactive_clarify_get_late_response`.
 
 ## Environment Variables
 
@@ -224,6 +285,15 @@ Run `pnpm install` in the `packages/vscode-extension` directory first, or use `n
 
 - Ensure your system can open local URLs via `open` (macOS), `xdg-open` (Linux), or `start` (Windows).
 - Make sure `packages/vscode-extension/webview-dist/panel.js` and `panel.css` exist by running `pnpm -r build`.
+
+### MCP call times out before the user finishes answering
+
+- The most common cause is an upstream MCP client timeout outside this repo.
+- The VS Code path supports late submit recovery:
+  - if the live requester is gone, the panel still allows submit
+  - the response is saved under `~/.interactive-clarify/late-responses/<requestId>.json`
+  - retrieve it later with `interactive_clarify_get_late_response`
+- File persistence is only used for late submit after disconnect/timeout, not for normal successful live responses.
 
 ### Agent doesn't use the tool
 

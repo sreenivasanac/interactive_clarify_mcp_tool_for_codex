@@ -16,6 +16,42 @@ export const TabBar: React.FC<TabBarProps> = ({
   onTabChange,
 }) => {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const questionCount = questions.length;
+
+  const focusTab = (index: number): void => {
+    onTabChange(index);
+    tabRefs.current[index]?.focus();
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ): void => {
+    if (questionCount <= 1) {
+      return;
+    }
+
+    switch (event.key) {
+      case "ArrowLeft":
+        event.preventDefault();
+        focusTab((index - 1 + questionCount) % questionCount);
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        focusTab((index + 1) % questionCount);
+        break;
+      case "Home":
+        event.preventDefault();
+        focusTab(0);
+        break;
+      case "End":
+        event.preventDefault();
+        focusTab(questionCount - 1);
+        break;
+      default:
+        break;
+    }
+  };
 
   // Scroll active tab into view when it changes
   useEffect(() => {
@@ -50,6 +86,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               .filter(Boolean)
               .join(" ")}
             onClick={() => onTabChange(index)}
+            onKeyDown={(event) => handleKeyDown(event, index)}
           >
             <span className="ic-tab__index">
               {answered ? "\u2713" : index + 1}

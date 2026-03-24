@@ -4,6 +4,7 @@ import { WebviewManager } from "./webview/WebviewManager";
 import type { QuestionRequest, QuestionResponse } from "@interactive-clarify/shared";
 
 let ipcServer: IpcServer | undefined;
+let activeWebviewManager: WebviewManager | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel("Interactive Clarify");
@@ -13,15 +14,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
   ipcServer.on(
     "question",
-    (request: QuestionRequest, respond: (response: QuestionResponse) => void) => {
+    (request: QuestionRequest, respond: (response: QuestionResponse) => boolean) => {
       outputChannel.appendLine(
         `Received question request: ${request.requestId} with ${request.questions.length} question(s)`
       );
 
-      const webviewManager = new WebviewManager(context);
-      webviewManager.showQuestions(
+      activeWebviewManager = new WebviewManager(context);
+      activeWebviewManager.showQuestions(
         request.questions,
         request.requestId,
+        request.timestamp,
         (response: QuestionResponse) => {
           outputChannel.appendLine(
             `Sending response for ${request.requestId}: ${response.status}`
@@ -31,6 +33,11 @@ export function activate(context: vscode.ExtensionContext): void {
       );
     }
   );
+
+  ipcServer.on("request_disconnected", (requestId: string) => {
+    outputChannel.appendLine(`Requester disconnected for ${requestId}; switching webview to late-submit mode.`);
+    activeWebviewManager?.markRequesterDisconnected(requestId);
+  });
 
   ipcServer.start().then(
     () => outputChannel.appendLine("IPC server started successfully."),

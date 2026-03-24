@@ -12,16 +12,38 @@ import {
   type IpcMessage,
 } from "@interactive-clarify/shared";
 
+function isSocketAlreadyServed(socketPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const probe = net.createConnection(socketPath);
+
+    probe.once("connect", () => {
+      probe.end();
+      resolve(true);
+    });
+
+    probe.once("error", (error: NodeJS.ErrnoException) => {
+      if (error.code === "ECONNREFUSED" || error.code === "ENOENT") {
+        resolve(false);
+        return;
+      }
+
+      resolve(true);
+    });
+  });
+}
+
 /**
  * Unix domain socket server that listens for question requests
  * from the MCP server and emits them as events.
  *
  * Events:
- *   'question' -> (request: QuestionRequest, respond: (response: QuestionResponse) => void)
+ *   'question' -> (request: QuestionRequest, respond: (response: QuestionResponse) => boolean)
+ *   'request_disconnected' -> (requestId: string)
  */
 export class IpcServer extends EventEmitter {
   private server: net.Server | undefined;
   private socketPath: string | undefined;
+  private ownsSocketPath = false;
   private outputChannel: vscode.OutputChannel;
 
   constructor(outputChannel: vscode.OutputChannel) {
@@ -32,6 +54,7 @@ export class IpcServer extends EventEmitter {
   /** Start listening on the IPC socket. */
   async start(): Promise<void> {
     this.socketPath = resolveSocketPath();
+    this.ownsSocketPath = false;
     this.outputChannel.appendLine(`IPC socket path: ${this.socketPath}`);
 
     // Ensure parent directory exists
@@ -43,6 +66,13 @@ export class IpcServer extends EventEmitter {
 
     // Remove stale socket file if it exists
     if (fs.existsSync(this.socketPath)) {
+      if (await isSocketAlreadyServed(this.socketPath)) {
+        this.outputChannel.appendLine(
+          "Another Interactive Clarify instance is already listening on the IPC socket; skipping startup in this window.",
+        );
+        return;
+      }
+
       this.outputChannel.appendLine("Removing stale socket file...");
       fs.unlinkSync(this.socketPath);
     }
@@ -59,6 +89,7 @@ export class IpcServer extends EventEmitter {
 
       this.server.listen(this.socketPath, () => {
         this.outputChannel.appendLine("IPC server listening.");
+        this.ownsSocketPath = true;
         // Restrict socket permissions on Unix
         if (this.socketPath) {
           try {
@@ -79,7 +110,7 @@ export class IpcServer extends EventEmitter {
       this.server = undefined;
     }
 
-    if (this.socketPath && fs.existsSync(this.socketPath)) {
+    if (this.socketPath && this.ownsSocketPath && fs.existsSync(this.socketPath)) {
       try {
         fs.unlinkSync(this.socketPath);
         this.outputChannel.appendLine("Removed socket file.");
@@ -87,6 +118,8 @@ export class IpcServer extends EventEmitter {
         // Best-effort cleanup
       }
     }
+
+    this.ownsSocketPath = false;
   }
 
   /** Handle a new client connection. */
@@ -117,12 +150,25 @@ export class IpcServer extends EventEmitter {
 
       case "question_request": {
         const request = msg as QuestionRequest;
-        const respond = (response: QuestionResponse): void => {
-          if (!socket.destroyed) {
+        let disconnectNotified = false;
+        const notifyDisconnect = (): void => {
+          if (disconnectNotified) {
+            return;
+          }
+          disconnectNotified = true;
+          this.emit("request_disconnected", request.requestId);
+        };
+        socket.once("close", notifyDisconnect);
+        socket.once("error", notifyDisconnect);
+        const respond = (response: QuestionResponse): boolean => {
+          if (!socket.destroyed && socket.writable) {
+            disconnectNotified = true;
             writeMessage(socket, response);
             // Each IPC connection handles a single request/response pair.
             socket.end();
+            return true;
           }
+          return false;
         };
         this.emit("question", request, respond);
         break;

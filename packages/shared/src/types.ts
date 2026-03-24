@@ -4,7 +4,7 @@ export interface OptionItem {
   label: string;
   /** What this option means or what happens if chosen. */
   description: string;
-  /** Optional markdown preview content shown when this option is focused. */
+  /** Optional preview content shown when this option is focused. */
   preview?: string;
 }
 
@@ -12,7 +12,7 @@ export interface OptionItem {
 export interface QuestionItem {
   /** Optional stable identifier for internal state and rendering. */
   id?: string;
-  /** The full question text (markdown supported). */
+  /** Plain-text question prompt shown in the UI. */
   question: string;
   /** Short tab label, max 12 characters (e.g. "Auth method", "Database"). */
   header: string;
@@ -29,10 +29,16 @@ export interface InteractiveClarifyInput {
 
 /** Output payload returned by the interactive_clarify MCP tool. */
 export interface InteractiveClarifyOutput {
-  /** Map of question header -> selected answer(s). */
+  /** Legacy map of question header -> selected answer(s). */
   answers: Record<string, string | string[]>;
+  /** Stable ordered answer items keyed by question id when available. */
+  answerItems?: Array<{
+    id?: string;
+    header: string;
+    answer: string | string[];
+  }>;
   /** Optional per-question annotations (notes, etc). */
-  annotations?: Record<string, { notes?: string }>;
+  annotations?: Record<string, { notes?: string; optionNotes?: Record<string, string> }>;
 }
 
 /**

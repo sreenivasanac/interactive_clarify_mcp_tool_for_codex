@@ -106,6 +106,7 @@ export function askViaIpc(input: InteractiveClarifyInput): Promise<InteractiveCl
         settle(() =>
           resolve({
             answers: response.answers ?? {},
+            answerItems: response.answerItems,
             annotations: response.annotations,
           }),
         );

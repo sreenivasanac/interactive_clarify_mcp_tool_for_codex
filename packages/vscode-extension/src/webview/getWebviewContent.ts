@@ -20,6 +20,15 @@ function getNonce(): string {
  * @param questions - The questions to inject into the page
  * @param panelJsUri - URI to the bundled panel.js script
  */
+function serializeQuestionsForInlineScript(questions: QuestionItem[]): string {
+  return JSON.stringify(questions)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 export function getWebviewContent(
   webview: vscode.Webview,
   questions: QuestionItem[],
@@ -30,10 +39,7 @@ export function getWebviewContent(
   const cspSource = webview.cspSource;
 
   // Escape the questions JSON for safe embedding in a script tag
-  const questionsJson = JSON.stringify(questions)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026");
+  const questionsJson = serializeQuestionsForInlineScript(questions);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -42,7 +48,7 @@ export function getWebviewContent(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
-             style-src ${cspSource} 'unsafe-inline';
+             style-src ${cspSource};
              script-src 'nonce-${nonce}';
              font-src ${cspSource};">
   <title>Interactive Clarify</title>

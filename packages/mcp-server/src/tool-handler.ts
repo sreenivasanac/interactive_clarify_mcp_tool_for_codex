@@ -3,17 +3,27 @@ import type { InteractiveClarifyInput, InteractiveClarifyOutput } from "@interac
 import { askViaIpc, isIpcUnavailableError } from "./ipc-client.js";
 import { askViaBrowser } from "./browser-fallback.js";
 
+type ClarifyMode = "auto" | "vscode" | "browser";
+
 /**
  * Handle an interactive_clarify tool call.
  *
  * Strategy: try the IPC path first (VS Code extension),
- * and fall back to the built-in Ink TUI only if the IPC connection itself fails.
- * If the user explicitly cancels, return immediately — do NOT fall back to TUI.
+ * and fall back to the browser UI only if the IPC connection itself fails.
+ * If the user explicitly cancels, return immediately — do NOT fall back to the browser UI.
  */
 export async function handleInteractiveClarify(
   input: InteractiveClarifyInput,
+  mode: ClarifyMode = "auto",
 ): Promise<CallToolResult> {
   let output: InteractiveClarifyOutput;
+
+  if (mode === "browser") {
+    output = await askViaBrowser(input);
+    return {
+      content: [{ type: "text", text: JSON.stringify(output) }],
+    };
+  }
 
   try {
     output = await askViaIpc(input);
@@ -29,6 +39,21 @@ export async function handleInteractiveClarify(
             text: JSON.stringify({
               status: "cancelled",
               message: "User cancelled the clarifying questions.",
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    if (mode === "vscode") {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              status: "error",
+              message,
             }),
           },
         ],

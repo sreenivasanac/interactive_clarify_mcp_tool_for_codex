@@ -4,7 +4,6 @@ interface SubmitBarProps {
   activeTab: number;
   total: number;
   answeredCount: number;
-  allAnswered: boolean;
   onPrev: () => void;
   onNext: () => void;
   onSubmit: () => void;
@@ -15,7 +14,6 @@ export const SubmitBar: React.FC<SubmitBarProps> = ({
   activeTab,
   total,
   answeredCount,
-  allAnswered,
   onPrev,
   onNext,
   onSubmit,
@@ -55,17 +53,18 @@ export const SubmitBar: React.FC<SubmitBarProps> = ({
           <button
             className="ic-btn ic-btn--primary"
             onClick={onSubmit}
-            disabled={!allAnswered}
             type="button"
-            title={allAnswered ? "Submit all answers" : "Answer all questions first"}
+            title="Submit current answers"
           >
-            {allAnswered ? "Submit →" : `Submit (${answeredCount} / ${total})`}
+            {answeredCount === total ? "Submit →" : `Submit (${answeredCount} / ${total})`}
           </button>
         </div>
       </div>
       <div className="ic-hints">
         <span className="ic-hints__item"><kbd>←</kbd><kbd>→</kbd> Switch questions</span>
-        <span className="ic-hints__item"><kbd>Click</kbd> Select option</span>
+        <span className="ic-hints__item"><kbd>↑</kbd><kbd>↓</kbd> Move options</span>
+        <span className="ic-hints__item"><kbd>Tab</kbd> Move focus</span>
+        <span className="ic-hints__item"><kbd>Enter</kbd> Submit</span>
         <span className="ic-hints__item"><kbd>Esc</kbd> Cancel</span>
       </div>
     </div>

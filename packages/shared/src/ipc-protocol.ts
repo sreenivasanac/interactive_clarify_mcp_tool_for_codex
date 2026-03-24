@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as os from "node:os";
 import * as net from "node:net";
-import type { QuestionItem } from "./types.js";
+import type { InteractiveClarifyOutput, QuestionItem } from "./types.js";
 import { SOCKET_FILENAME } from "./constants.js";
 
 // ── IPC Message Types ──
@@ -18,7 +18,8 @@ export interface QuestionResponse {
   requestId: string;
   status: "answered" | "cancelled" | "timeout";
   answers?: Record<string, string | string[]>;
-  annotations?: Record<string, { notes?: string }>;
+  answerItems?: InteractiveClarifyOutput["answerItems"];
+  annotations?: Record<string, { notes?: string; optionNotes?: Record<string, string> }>;
 }
 
 export interface PingMessage {

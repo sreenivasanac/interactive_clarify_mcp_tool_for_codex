@@ -1,13 +1,17 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
-import type { QuestionItem, QuestionResponse } from "@interactive-clarify/shared";
+import type { InteractiveClarifyOutput, QuestionItem, QuestionResponse } from "@interactive-clarify/shared";
 import { getWebviewContent } from "./getWebviewContent";
+import { saveLateResponse } from "../lateResponseStore";
 
 /**
  * Manages the creation and lifecycle of the Interactive Clarify webview panel.
  */
 export class WebviewManager {
   private context: vscode.ExtensionContext;
+  private panelsByRequestId = new Map<string, vscode.WebviewPanel>();
+  private disconnectedRequestIds = new Set<string>();
+  private readonly lateResponseThresholdMs = 120 * 1000;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -23,16 +27,17 @@ export class WebviewManager {
   showQuestions(
     questions: QuestionItem[],
     requestId: string,
-    onResponse: (response: QuestionResponse) => void
+    requestTimestamp: number,
+    onResponse: (response: QuestionResponse) => boolean
   ): void {
     let hasResponded = false;
 
-    const sendResponse = (response: QuestionResponse): void => {
+    const sendResponse = (response: QuestionResponse): boolean => {
       if (hasResponded) {
-        return;
+        return true;
       }
       hasResponded = true;
-      onResponse(response);
+      return onResponse(response);
     };
 
     // Path to the bundled webview assets
@@ -54,6 +59,7 @@ export class WebviewManager {
     );
 
     panel.iconPath = undefined;
+    this.panelsByRequestId.set(requestId, panel);
 
     // Generate and set the webview HTML content
     const panelJsUri = panel.webview.asWebviewUri(
@@ -72,16 +78,42 @@ export class WebviewManager {
 
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
-      (message: { type: string; answers?: Record<string, string | string[]>; annotations?: Record<string, { notes?: string }> }) => {
+      (
+        message: {
+          type: string;
+          answers?: InteractiveClarifyOutput["answers"];
+          answerItems?: InteractiveClarifyOutput["answerItems"];
+          annotations?: InteractiveClarifyOutput["annotations"];
+        },
+      ) => {
         switch (message.type) {
           case "submit":
-            sendResponse({
+            const response: QuestionResponse = {
               type: "question_response",
               requestId,
               status: "answered",
               answers: message.answers,
+              answerItems: message.answerItems,
               annotations: message.annotations,
-            });
+            };
+
+            const isLateRequest =
+              this.disconnectedRequestIds.has(requestId) ||
+              Date.now() - requestTimestamp >= this.lateResponseThresholdMs;
+
+            if (isLateRequest || !sendResponse(response)) {
+              const filePath = saveLateResponse({
+                requestId,
+                createdAt: new Date().toISOString(),
+                questions,
+                answers: message.answers ?? {},
+                answerItems: message.answerItems,
+                annotations: message.annotations,
+              });
+              vscode.window.showInformationMessage(
+                `Interactive Clarify: live request expired. Response saved to ${filePath}`,
+              );
+            }
             panel.dispose();
             break;
 
@@ -101,11 +133,26 @@ export class WebviewManager {
 
     // If the panel is closed without responding, send a cancelled response
     panel.onDidDispose(() => {
+      this.panelsByRequestId.delete(requestId);
+      this.disconnectedRequestIds.delete(requestId);
       sendResponse({
         type: "question_response",
         requestId,
         status: "cancelled",
       });
+    });
+  }
+
+  markRequesterDisconnected(requestId: string): void {
+    this.disconnectedRequestIds.add(requestId);
+    const panel = this.panelsByRequestId.get(requestId);
+    if (!panel) {
+      return;
+    }
+
+    void panel.webview.postMessage({
+      type: "requester_disconnected",
+      requestId,
     });
   }
 }

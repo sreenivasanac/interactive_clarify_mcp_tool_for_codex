@@ -1,38 +1,103 @@
+import * as fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 import * as http from "node:http";
-import * as os from "node:os";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type {
-  InteractiveClarifyInput,
-  InteractiveClarifyOutput,
-  QuestionResponse,
+import {
+  getQuestionKey,
+  RESPONSE_TIMEOUT,
+  type InteractiveClarifyInput,
+  type InteractiveClarifyOutput,
 } from "@interactive-clarify/shared";
+
+type SubmittedMessage = {
+  type?: string;
+  answers?: Record<string, string | string[]>;
+  answerItems?: InteractiveClarifyOutput["answerItems"];
+  annotations?: Record<string, { notes?: string; optionNotes?: Record<string, string> }>;
+};
+
+function isAnswerValue(value: unknown): value is string | string[] {
+  return (
+    typeof value === "string" ||
+    (Array.isArray(value) && value.every((item) => typeof item === "string"))
+  );
+}
 
 function getAssetPaths(): { jsPath: string; cssPath: string } {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  const webviewDistDir = path.resolve(currentDir, "../../vscode-extension/webview-dist");
+  const candidateDirs = [
+    path.resolve(currentDir, "../browser-assets"),
+    path.resolve(currentDir, "../../vscode-extension/webview-dist"),
+  ];
+
+  const assetDir =
+    candidateDirs.find((dir) => {
+      const jsPath = path.join(dir, "panel.js");
+      const cssPath = path.join(dir, "panel.css");
+      return fsSync.existsSync(jsPath) && fsSync.existsSync(cssPath);
+    }) ?? candidateDirs[0];
 
   return {
-    jsPath: path.join(webviewDistDir, "panel.js"),
-    cssPath: path.join(webviewDistDir, "panel.css"),
+    jsPath: path.join(assetDir, "panel.js"),
+    cssPath: path.join(assetDir, "panel.css"),
   };
 }
 
-function openUrl(url: string): void {
-  if (process.platform === "darwin") {
-    spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
-    return;
+function serializeAnswerItems(
+  input: InteractiveClarifyInput,
+  answers: Record<string, string | string[]>,
+): NonNullable<InteractiveClarifyOutput["answerItems"]> {
+  return input.questions.flatMap((question, index) => {
+      const questionKey = getQuestionKey(question, index);
+      const answer = answers[question.header] ?? answers[questionKey];
+      if (answer === undefined) {
+        return [];
+      }
+
+      return [{ id: question.id, header: question.header, answer }];
+    });
+}
+
+function normalizeAnswerItems(
+  answerItems: InteractiveClarifyOutput["answerItems"],
+): NonNullable<InteractiveClarifyOutput["answerItems"]> {
+  if (!Array.isArray(answerItems)) {
+    return [];
   }
 
-  if (process.platform === "win32") {
-    spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
-    return;
-  }
+  return answerItems.flatMap((answerItem) => {
+    if (!answerItem || typeof answerItem.header !== "string" || !isAnswerValue(answerItem.answer)) {
+      return [];
+    }
 
-  spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
+    return [
+      {
+        id: typeof answerItem.id === "string" ? answerItem.id : undefined,
+        header: answerItem.header,
+        answer: answerItem.answer,
+      },
+    ];
+  });
+}
+
+function openUrl(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child =
+      process.platform === "darwin"
+        ? spawn("open", [url], { stdio: "ignore" })
+        : process.platform === "win32"
+          ? spawn("cmd", ["/c", "start", "", url], { stdio: "ignore" })
+          : spawn("xdg-open", [url], { stdio: "ignore" });
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
 }
 
 function readRequestBody(req: http.IncomingMessage): Promise<string> {
@@ -56,11 +121,21 @@ function json<T>(res: http.ServerResponse, statusCode: number, body: T): void {
   res.end(JSON.stringify(body));
 }
 
-function html(input: InteractiveClarifyInput): string {
-  const questionsJson = JSON.stringify(input.questions)
+function createResponsePath(): string {
+  return `/__interactive_clarify_response/${crypto.randomUUID()}`;
+}
+
+function serializeQuestionsForInlineScript(questions: InteractiveClarifyInput["questions"]): string {
+  return JSON.stringify(questions)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026");
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function html(input: InteractiveClarifyInput, responsePath: string, browserUrl: string): string {
+  const questionsJson = serializeQuestionsForInlineScript(input.questions);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -71,6 +146,9 @@ function html(input: InteractiveClarifyInput): string {
   <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
+  <div style="font-family: system-ui, sans-serif; font-size: 12px; color: #98a2b3; background: #151718; border-bottom: 1px solid #2b2f31; padding: 8px 12px;">
+    Browser UI running at <span style="color: #d0d5dd;">${browserUrl}</span>
+  </div>
   <div id="root"></div>
   <script>
     window.__INTERACTIVE_CLARIFY_QUESTIONS__ = ${questionsJson};
@@ -87,7 +165,7 @@ function html(input: InteractiveClarifyInput): string {
           window.__interactiveClarifyResponded = true;
 
           try {
-            const response = await fetch("/__interactive_clarify_response", {
+            const response = await fetch(${JSON.stringify(responsePath)}, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(message),
@@ -125,12 +203,51 @@ function html(input: InteractiveClarifyInput): string {
       }
 
       const payload = JSON.stringify({ type: "cancel" });
-      navigator.sendBeacon("/__interactive_clarify_response", new Blob([payload], { type: "application/json" }));
+      navigator.sendBeacon(${JSON.stringify(responsePath)}, new Blob([payload], { type: "application/json" }));
     });
   </script>
   <script src="/panel.js"></script>
 </body>
 </html>`;
+}
+
+function normalizeAnswers(
+  input: InteractiveClarifyInput,
+  answers: Record<string, string | string[]>,
+): Record<string, string | string[]> {
+  const normalized: Record<string, string | string[]> = {};
+
+  for (const [index, question] of input.questions.entries()) {
+    const questionKey = getQuestionKey(question, index);
+    const answer = answers[question.header] ?? answers[questionKey];
+    if (answer !== undefined) {
+      normalized[question.header] = answer;
+    }
+  }
+
+  return normalized;
+}
+
+function buildOutput(
+  input: InteractiveClarifyInput,
+  message: SubmittedMessage,
+): InteractiveClarifyOutput {
+  const normalizedAnswerItems = normalizeAnswerItems(message.answerItems);
+  const rawAnswers =
+    message.answers ??
+    Object.fromEntries(
+      normalizedAnswerItems.map(({ header, answer }) => [header, answer]),
+    );
+  const answers = normalizeAnswers(input, rawAnswers);
+
+  return {
+    answers,
+    answerItems:
+      normalizedAnswerItems.length > 0
+        ? normalizedAnswerItems
+        : serializeAnswerItems(input, answers),
+    annotations: message.annotations,
+  };
 }
 
 export async function askViaBrowser(
@@ -141,10 +258,12 @@ export async function askViaBrowser(
 
   const js = await fs.readFile(jsPath);
   const css = await fs.readFile(cssPath);
+  const responsePath = createResponsePath();
 
   return new Promise<InteractiveClarifyOutput>((resolve, reject) => {
     const requestId = crypto.randomUUID();
     let settled = false;
+    let browserUrl = "http://127.0.0.1";
 
     const settle = (fn: () => void): void => {
       if (settled) {
@@ -162,7 +281,7 @@ export async function askViaBrowser(
 
       if (req.method === "GET" && requestUrl.pathname === "/") {
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(html(input));
+        res.end(html(input, responsePath, browserUrl));
         return;
       }
 
@@ -178,14 +297,10 @@ export async function askViaBrowser(
         return;
       }
 
-      if (req.method === "POST" && requestUrl.pathname === "/__interactive_clarify_response") {
+      if (req.method === "POST" && requestUrl.pathname === responsePath) {
         try {
           const body = await readRequestBody(req);
-          const message = JSON.parse(body) as {
-            type?: string;
-            answers?: Record<string, string | string[]>;
-            annotations?: Record<string, { notes?: string }>;
-          };
+          const message = JSON.parse(body) as SubmittedMessage;
 
           if (message.type === "cancel") {
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -198,17 +313,13 @@ export async function askViaBrowser(
           if (message.type === "submit") {
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ ok: true, requestId }), () => {
-              settle(() =>
-                resolve({
-                  answers: message.answers ?? {},
-                  annotations: message.annotations,
-                }),
-              );
+              settle(() => resolve(buildOutput(input, message)));
             });
             return;
           }
 
           json(res, 200, { ok: true, requestId });
+          return;
         } catch (error) {
           json(res, 400, {
             ok: false,
@@ -216,8 +327,6 @@ export async function askViaBrowser(
           });
           return;
         }
-
-        return;
       }
 
       res.writeHead(404);
@@ -230,7 +339,7 @@ export async function askViaBrowser(
 
     const timeout = setTimeout(() => {
       settle(() => reject(new Error("Browser response timeout")));
-    }, 5 * 60 * 1000);
+    }, RESPONSE_TIMEOUT);
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address();
@@ -239,7 +348,18 @@ export async function askViaBrowser(
         return;
       }
 
-      openUrl(`http://127.0.0.1:${address.port}`);
+      browserUrl = `http://127.0.0.1:${address.port}`;
+      console.error(`Interactive Clarify browser UI: ${browserUrl}`);
+
+      void openUrl(browserUrl).catch((error) => {
+        settle(() =>
+          reject(
+            new Error(
+              `Failed to open browser: ${error instanceof Error ? error.message : String(error)}`,
+            ),
+          ),
+        );
+      });
     });
   });
 }
