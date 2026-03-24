@@ -11,6 +11,7 @@ export function activate(context: vscode.ExtensionContext): void {
   outputChannel.appendLine("Interactive Clarify extension activating...");
 
   ipcServer = new IpcServer(outputChannel);
+  activeWebviewManager = new WebviewManager(context);
 
   ipcServer.on(
     "question",
@@ -19,11 +20,9 @@ export function activate(context: vscode.ExtensionContext): void {
         `Received question request: ${request.requestId} with ${request.questions.length} question(s)`
       );
 
-      activeWebviewManager = new WebviewManager(context);
       activeWebviewManager.showQuestions(
         request.questions,
         request.requestId,
-        request.timestamp,
         (response: QuestionResponse) => {
           outputChannel.appendLine(
             `Sending response for ${request.requestId}: ${response.status}`
@@ -70,4 +69,6 @@ export function deactivate(): void {
     ipcServer.stop();
     ipcServer = undefined;
   }
+
+  activeWebviewManager = undefined;
 }

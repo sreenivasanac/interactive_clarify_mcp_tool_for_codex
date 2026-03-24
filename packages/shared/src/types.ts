@@ -41,6 +41,13 @@ export interface InteractiveClarifyOutput {
   annotations?: Record<string, { notes?: string; optionNotes?: Record<string, string> }>;
 }
 
+/** Persisted response captured after a live request disconnects or times out. */
+export interface LateResponseRecord extends InteractiveClarifyOutput {
+  requestId: string;
+  createdAt: string;
+  questions: QuestionItem[];
+}
+
 /**
  * Returns a stable internal key for a question. Falls back to index to preserve
  * behavior for older clients that do not send an explicit id yet.

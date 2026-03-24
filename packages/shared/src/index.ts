@@ -3,6 +3,7 @@ export type {
   QuestionItem,
   InteractiveClarifyInput,
   InteractiveClarifyOutput,
+  LateResponseRecord,
 } from "./types.js";
 export { getQuestionKey } from "./types.js";
 

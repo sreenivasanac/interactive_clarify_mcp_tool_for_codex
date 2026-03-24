@@ -55,8 +55,11 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   // Scroll active tab into view when it changes
   useEffect(() => {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
     tabRefs.current[activeTab]?.scrollIntoView({
-      behavior: "smooth",
+      behavior,
       block: "nearest",
       inline: "nearest",
     });

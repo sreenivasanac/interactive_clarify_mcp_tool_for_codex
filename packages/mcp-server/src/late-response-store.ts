@@ -1,16 +1,18 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import type { InteractiveClarifyOutput, QuestionItem } from "@interactive-clarify/shared";
-
-interface LateResponseRecord extends InteractiveClarifyOutput {
-  requestId: string;
-  createdAt: string;
-  questions: QuestionItem[];
-}
+import type { LateResponseRecord } from "@interactive-clarify/shared";
 
 function getLateResponseDir(): string {
   return path.join(os.homedir(), ".interactive-clarify", "late-responses");
+}
+
+function readLateResponseFile(filePath: string): LateResponseRecord | null {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8")) as LateResponseRecord;
+  } catch {
+    return null;
+  }
 }
 
 export function readLateResponse(requestId?: string): LateResponseRecord | null {
@@ -24,7 +26,7 @@ export function readLateResponse(requestId?: string): LateResponseRecord | null 
     if (!fs.existsSync(filePath)) {
       return null;
     }
-    return JSON.parse(fs.readFileSync(filePath, "utf8")) as LateResponseRecord;
+    return readLateResponseFile(filePath);
   }
 
   const files = fs
@@ -36,9 +38,12 @@ export function readLateResponse(requestId?: string): LateResponseRecord | null 
     }))
     .sort((a, b) => b.mtimeMs - a.mtimeMs);
 
-  if (files.length === 0) {
-    return null;
+  for (const file of files) {
+    const record = readLateResponseFile(path.join(dir, file.file));
+    if (record) {
+      return record;
+    }
   }
 
-  return JSON.parse(fs.readFileSync(path.join(dir, files[0].file), "utf8")) as LateResponseRecord;
+  return null;
 }

@@ -285,6 +285,12 @@ body {
   gap: 6px;
 }
 
+.ic-optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .ic-optionBlock {
   display: flex;
   flex-direction: column;
@@ -554,6 +560,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.ic-freeform__toggle {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ic-freeform__toggle:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, #007acc);
+  outline-offset: 4px;
+  border-radius: 6px;
 }
 
 .ic-freeform--selected {

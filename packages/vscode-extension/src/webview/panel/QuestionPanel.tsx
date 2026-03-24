@@ -11,8 +11,6 @@ interface QuestionPanelProps {
   onOptionNoteChange: (optionKey: string, notes: string) => void;
 }
 
-const FREEFORM_OPTION_KEY = "__freeform__";
-
 function getOptionDomId(prefix: string, index: number, optionLabel: string): string {
   return `${prefix}-${index}-${encodeURIComponent(optionLabel)}`;
 }
@@ -196,11 +194,12 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
       )}
 
       <div className="ic-question-layout">
-        <div
-          className="ic-options"
-          role={isMulti ? "group" : "radiogroup"}
-          aria-labelledby={questionHeadingId}
-        >
+        <div className="ic-options">
+          <div
+            className="ic-optionList"
+            role={isMulti ? "group" : "radiogroup"}
+            aria-labelledby={questionHeadingId}
+          >
           {question.options.map((option, optIdx) => {
             const isSelected = selectedLabels.includes(option.label);
             const hasPreview = Boolean(option.preview);
@@ -254,39 +253,27 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
               </div>
             );
           })}
+          </div>
 
           <div
             className={`ic-freeform ${isFreeformSelected ? "ic-freeform--selected" : ""}`}
-            role={isMulti ? "checkbox" : "radio"}
-            aria-checked={isFreeformSelected}
-            aria-labelledby={freeformTitleId}
-            aria-describedby={freeformHintId}
-            tabIndex={0}
-            data-question-index={index}
-            data-option-index={question.options.length}
-            onClick={() => {
-              setFreeformActive(true);
-              syncFreeformAnswer(freeformDraft);
-            }}
-            onKeyDown={(event) => {
-              const target = event.target;
-              const activeElement = target instanceof HTMLElement ? target : null;
-              const tag = activeElement?.tagName;
-              const isTextEntryTarget = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-
-              if (isTextEntryTarget) {
-                return;
-              }
-
-              handleOptionKeyDown(event, question.options.length, question.options.length + 1);
-              if (event.key === " " || event.key === "Enter") {
-                event.preventDefault();
+          >
+            <button
+              type="button"
+              className="ic-freeform__toggle"
+              aria-describedby={freeformHintId}
+              aria-pressed={isFreeformSelected}
+              data-question-index={index}
+              data-option-index={question.options.length}
+              onClick={() => {
                 setFreeformActive(true);
                 syncFreeformAnswer(freeformDraft);
-              }
-            }}
-          >
-            <div className="ic-freeform__header">
+                document.getElementById(freeformInputId)?.focus();
+              }}
+              onKeyDown={(event) => {
+                handleOptionKeyDown(event, question.options.length, question.options.length + 1);
+              }}
+            >
               <div className="ic-freeform__titleRow">
                 <span className="ic-indicator" aria-hidden="true">
                   {isMulti ? (
@@ -299,14 +286,14 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                     </span>
                   )}
                 </span>
-                <label className="ic-freeform__title" id={freeformTitleId} htmlFor={freeformInputId}>
+                <span className="ic-freeform__title" id={freeformTitleId}>
                   Freeform chat
-                </label>
+                </span>
               </div>
               <div className="ic-freeform__subtitle" id={freeformHintId}>
                 Custom answer
               </div>
-            </div>
+            </button>
             <textarea
               id={freeformInputId}
               name={freeformInputId}
@@ -317,10 +304,12 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
                 setFreeformDraft(nextValue);
                 setFreeformActive(true);
                 setPreviewLabel(null);
+                syncFreeformAnswer(nextValue);
               }}
               onFocus={() => {
                 setFreeformActive(true);
                 setPreviewLabel(null);
+                syncFreeformAnswer(freeformDraft);
               }}
               onBlur={() => {
                 syncFreeformAnswer(freeformDraft);
@@ -328,6 +317,7 @@ export const QuestionPanel: React.FC<QuestionPanelProps> = ({
               onKeyDown={(event) => {
                 event.stopPropagation();
               }}
+              aria-labelledby={freeformTitleId}
               aria-describedby={freeformHintId}
               placeholder="Write your answer…"
               rows={4}

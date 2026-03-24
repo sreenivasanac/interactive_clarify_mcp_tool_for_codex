@@ -11,7 +11,6 @@ export class WebviewManager {
   private context: vscode.ExtensionContext;
   private panelsByRequestId = new Map<string, vscode.WebviewPanel>();
   private disconnectedRequestIds = new Set<string>();
-  private readonly lateResponseThresholdMs = 120 * 1000;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -27,7 +26,6 @@ export class WebviewManager {
   showQuestions(
     questions: QuestionItem[],
     requestId: string,
-    requestTimestamp: number,
     onResponse: (response: QuestionResponse) => boolean
   ): void {
     let hasResponded = false;
@@ -97,9 +95,7 @@ export class WebviewManager {
               annotations: message.annotations,
             };
 
-            const isLateRequest =
-              this.disconnectedRequestIds.has(requestId) ||
-              Date.now() - requestTimestamp >= this.lateResponseThresholdMs;
+            const isLateRequest = this.disconnectedRequestIds.has(requestId);
 
             if (isLateRequest || !sendResponse(response)) {
               const filePath = saveLateResponse({
