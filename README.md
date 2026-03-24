@@ -1,6 +1,6 @@
 # Interactive Clarify
 
-A universal **"Ask User Questions"** MCP tool for AI coding agents. When an AI agent encounters ambiguity, it calls the `interactive_clarify` tool to present structured clarifying questions with multiple options — rendered either in a **VS Code webview panel** or a **browser fallback**.
+A universal **"Ask User Questions"** MCP tool for AI coding agents. When an AI agent encounters ambiguity, it can open structured clarifying questions in either a **VS Code webview panel** or a **browser UI**.
 
 Works with **Codex CLI**, **Claude Code**, **Factory Droid**, and any MCP-compatible agent.
 
@@ -11,8 +11,9 @@ AI Agent (Codex / Claude Code / Factory Droid)
   │  MCP stdio
   ▼
 MCP Server (Node.js)
-  │  Tries Unix socket IPC ──→ VS Code Extension ──→ Webview Panel
-  │  Falls back to ──→ Local Browser Window
+  │  Auto / VS Code only / Browser only
+  ├──→ VS Code Extension ──→ Webview Panel
+  └──→ Local Browser Window
   ▼
 Returns JSON answers to agent
 ```
@@ -32,13 +33,27 @@ Returns JSON answers to agent
 - **Browser fallback** — Opens the same React UI in your default browser when VS Code isn't available
 - **Universal MCP** — Any MCP-compatible agent can use it
 
+## Available MCP Tools
+
+- `interactive_clarify`
+  - default tool
+  - prefers VS Code, falls back to browser
+- `interactive_clarify_vscode`
+  - forces the VS Code extension UI
+  - returns an error if VS Code is unavailable
+- `interactive_clarify_browser`
+  - forces the browser UI
+  - shows the local browser URL in the page itself
+- `interactive_clarify_get_late_response`
+  - retrieves a response saved after the original live MCP request timed out or disconnected
+
 ## Project Structure
 
 ```
 packages/
-├── shared/              # Shared types & IPC protocol
-├── mcp-server/          # MCP server (stdio transport)
-└── vscode-extension/    # VS Code extension + React webview
+├── shared/              # Shared types, constants, and IPC protocol
+├── mcp-server/          # MCP server (stdio transport) + browser fallback
+└── vscode-extension/    # VS Code extension + React webview panel
     └── src/webview/panel/
 ```
 
@@ -82,7 +97,7 @@ The extension activates automatically on VS Code startup and listens for incomin
 
 ### 4. Test it
 
-**Without VS Code (browser fallback):**
+**Without VS Code (browser UI):**
 
 ```bash
 # With Codex CLI
@@ -172,134 +187,23 @@ Any MCP-compatible client using stdio transport:
 }
 ```
 
-## Tool Schema
+If you install the server package globally or invoke package binaries directly, the published bin name is `interactive-clarify-mcp`.
 
-### `interactive_clarify`
+## Reference
 
-Accepts:
+Detailed reference is in [docs/reference.md](/Users/sreenivasanac/SoftwareProjects/ask-user-questions-tool-interface/docs/reference.md), including:
 
-```typescript
-{
-  questions: Array<{
-    question: string;       // Plain-text question prompt shown in the UI
-    header: string;         // Short tab label (max 12 chars)
-    options: Array<{
-      label: string;        // Option display text (1-5 words)
-      description: string;  // What this option means
-      preview?: string;     // Optional preview content
-    }>;
-    multiSelect?: boolean;  // Allow multiple selections (default: false)
-  }>;
-}
-```
-
-Returns:
-
-```typescript
-{
-  answers: Record<string, string | string[]>;  // legacy header → selected answer(s)
-  answerItems?: Array<{
-    id?: string;
-    header: string;
-    answer: string | string[];
-  }>;                                          // stable ordered answers
-  annotations?: Record<string, {
-    notes?: string;
-    optionNotes?: Record<string, string>;
-  }>;
-}
-```
-
-Behavior notes:
-
-- Unanswered questions are returned as `"Question not answered"` on submit.
-- Freeform answers are returned as normal string answers.
-- Optional notes for selected structured answers are returned under `annotations[*].optionNotes`.
-
-### `interactive_clarify_get_late_response`
-
-Retrieves a saved late response written by the VS Code extension after the original live MCP request had already timed out or disconnected.
-
-Accepts:
-
-```typescript
-{
-  requestId?: string; // optional original interactive_clarify request id
-}
-```
-
-Returns the saved late response record, including:
-
-```typescript
-{
-  requestId: string;
-  createdAt: string;
-  questions: QuestionItem[];
-  answers: Record<string, string | string[]>;
-  answerItems?: Array<{
-    id?: string;
-    header: string;
-    answer: string | string[];
-  }>;
-  annotations?: Record<string, {
-    notes?: string;
-    optionNotes?: Record<string, string>;
-  }>;
-}
-```
-
-## How It Works
-
-1. Agent calls `interactive_clarify` MCP tool with questions
-2. MCP server tries to connect to VS Code extension via Unix socket IPC (`~/.interactive-clarify/ipc.sock`)
-3. **If VS Code is running** (with extension installed): Extension opens a webview panel with tab-based question UI. User answers, responses flow back via IPC.
-4. **If VS Code is unavailable**: MCP server starts a short-lived local HTTP server and opens the same React UI in your default browser.
-5. MCP server returns JSON answers to the agent, which continues execution with the user's choices.
-
-Late-submit flow:
-
-1. If the upstream MCP caller times out or disconnects while the VS Code panel is still open, the panel switches into a subtle late-submit mode.
-2. The user can still submit from VS Code.
-3. The extension saves the submitted response to a local file instead of losing it.
-4. The coding agent / CLI can later retrieve that saved response using `interactive_clarify_get_late_response`.
+- tool schemas
+- runtime flow
+- troubleshooting
+- keyboard behavior and answer semantics
+- package responsibilities and development entry points
 
 ## Environment Variables
 
 | Variable | Description |
 |---|---|
-| `INTERACTIVE_CLARIFY_SOCKET` | Override the default IPC socket path (`~/.interactive-clarify/ipc.sock`) |
-
-## Troubleshooting
-
-### `vsce: command not found` when packaging
-
-Run `pnpm install` in the `packages/vscode-extension` directory first, or use `npx @vscode/vsce package --no-dependencies --allow-missing-repository`.
-
-### VS Code extension not receiving questions
-
-- Check that the extension is activated: open VS Code's Output panel and look for "Interactive Clarify" logs.
-- Ensure no stale socket file exists: `rm ~/.interactive-clarify/ipc.sock` and restart VS Code.
-- If multiple VS Code windows are open, only the first one binds the socket.
-
-### Browser fallback not opening
-
-- Ensure your system can open local URLs via `open` (macOS), `xdg-open` (Linux), or `start` (Windows).
-- Make sure `packages/vscode-extension/webview-dist/panel.js` and `panel.css` exist by running `pnpm -r build`.
-
-### MCP call times out before the user finishes answering
-
-- The most common cause is an upstream MCP client timeout outside this repo.
-- The VS Code path supports late submit recovery:
-  - if the live requester is gone, the panel still allows submit
-  - the response is saved under `~/.interactive-clarify/late-responses/<requestId>.json`
-  - retrieve it later with `interactive_clarify_get_late_response`
-- File persistence is only used for late submit after disconnect/timeout, not for normal successful live responses.
-
-### Agent doesn't use the tool
-
-- Verify the MCP server is listed: run `codex mcp list` / `claude mcp list` / `/mcp` in Factory.
-- Add a system prompt instruction telling the agent to use `interactive_clarify` for clarifying questions.
-- The agent decides when to use the tool — you can explicitly ask it to: _"Use interactive_clarify to ask me about X before proceeding."_
+| `INTERACTIVE_CLARIFY_SOCKET` | Override the default IPC socket path. Default: `~/.interactive-clarify/interactive-clarify.sock` |
 
 ## Development
 
@@ -309,6 +213,9 @@ pnpm dev
 
 # Rebuild everything
 pnpm -r build
+
+# Run the MCP server directly
+pnpm --filter @interactive-clarify/mcp-server start
 
 # Package VS Code extension
 cd packages/vscode-extension
