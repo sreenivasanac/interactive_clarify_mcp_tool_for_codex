@@ -1,0 +1,27 @@
+{
+  "name": "@interactive-clarify/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "interactive-clarify-mcp": "./dist/bin/ask-user-mcp.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/bin/ask-user-mcp.js"
+  },
+  "dependencies": {
+    "@interactive-clarify/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.0",
+    "ink": "^5.1.0",
+    "@inkjs/ui": "^2.0.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

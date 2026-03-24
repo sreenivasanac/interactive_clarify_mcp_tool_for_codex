@@ -1,0 +1,570 @@
+/* ================================================================
+   Interactive Clarify - VS Code Webview Styles (v2)
+   ================================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-editor-foreground, #cccccc);
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Container ── */
+
+.ic-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+
+.ic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.ic-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ic-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-foreground, #fff);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.ic-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground, #cccccc);
+}
+
+.ic-progress {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-descriptionForeground, #888);
+  background: var(--vscode-badge-background, #4d4d4d);
+  padding: 2px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Tab Bar ── */
+
+.ic-tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-bottom: 1px solid var(--vscode-widget-border, #393939);
+  padding-bottom: 0;
+}
+
+.ic-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.ic-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px 9px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-tab-inactiveForeground, #969696);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+  outline: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.ic-tab:hover {
+  color: var(--vscode-editor-foreground, #cccccc);
+}
+
+.ic-tab--active {
+  color: var(--vscode-editor-foreground, #ffffff);
+  font-weight: 600;
+  border-bottom-color: var(--vscode-button-background, #007acc);
+}
+
+.ic-tab__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* Unanswered tab index badge */
+.ic-tab:not(.ic-tab--answered) .ic-tab__index {
+  border: 1.5px solid var(--vscode-widget-border, #555);
+  color: var(--vscode-descriptionForeground, #888);
+  background: transparent;
+}
+
+.ic-tab--active:not(.ic-tab--answered) .ic-tab__index {
+  border-color: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-background, #007acc);
+}
+
+/* Answered tab index badge → green check */
+.ic-tab--answered .ic-tab__index {
+  border: none;
+  background: #28a745;
+  color: #fff;
+}
+
+.ic-tab__label {
+  display: inline-block;
+}
+
+/* ── Question Panel ── */
+
+.ic-question-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ic-question-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-button-background, #007acc);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ic-question-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vscode-editor-foreground, #cccccc);
+  line-height: 1.6;
+}
+
+.ic-select-hint {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ic-select-hint__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--vscode-descriptionForeground, #888);
+  font-size: 8px;
+}
+
+/* ── Option Cards ── */
+
+.ic-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ic-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--vscode-widget-border, #393939);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: var(--vscode-editor-foreground, #cccccc);
+  font: inherit;
+  transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+  outline: none;
+}
+
+.ic-option:hover {
+  border-color: var(--vscode-focusBorder, #007acc);
+  background: rgba(0, 122, 204, 0.08);
+}
+
+.ic-option:focus-visible {
+  border-color: var(--vscode-focusBorder, #007acc);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007acc);
+}
+
+/* ── Selected state ── */
+
+.ic-option--selected {
+  border-color: var(--vscode-button-background, #007acc);
+  background: rgba(0, 122, 204, 0.15);
+  box-shadow: 0 0 0 1px var(--vscode-button-background, #007acc);
+}
+
+.ic-option--selected:hover {
+  background: rgba(0, 122, 204, 0.2);
+}
+
+/* ── Radio indicator ── */
+
+.ic-indicator {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ic-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--vscode-widget-border, #555);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+
+.ic-radio--selected {
+  border-color: var(--vscode-button-background, #007acc);
+  background: var(--vscode-button-background, #007acc);
+}
+
+.ic-radio__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-editor-background, #1e1e1e);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ic-radio--selected .ic-radio__dot {
+  opacity: 1;
+}
+
+/* ── Checkbox indicator ── */
+
+.ic-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--vscode-widget-border, #555);
+  background: transparent;
+  transition: all 0.15s ease;
+}
+
+.ic-checkbox--selected {
+  border-color: var(--vscode-button-background, #007acc);
+  background: var(--vscode-button-background, #007acc);
+}
+
+.ic-checkbox__check {
+  color: var(--vscode-editor-background, #fff);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.ic-checkbox--selected .ic-checkbox__check {
+  opacity: 1;
+}
+
+/* ── Option content ── */
+
+.ic-option__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ic-option__label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ic-option--selected .ic-option__label {
+  color: var(--vscode-button-background, #007acc);
+}
+
+.ic-option__desc {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+.ic-option--selected .ic-option__desc {
+  color: var(--vscode-editor-foreground, #ccc);
+}
+
+.ic-option__recommended {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--vscode-button-background, #007acc);
+  background: rgba(0, 122, 204, 0.15);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+
+/* ── Preview Pane ── */
+
+.ic-preview {
+  margin-top: 6px;
+  border: 1px solid var(--vscode-widget-border, #393939);
+  border-radius: 6px;
+  overflow: hidden;
+  animation: ic-slide-down 0.15s ease;
+}
+
+@keyframes ic-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ic-preview__header {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--vscode-descriptionForeground, #888);
+  background: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+  border-bottom: 1px solid var(--vscode-widget-border, #393939);
+}
+
+.ic-preview__content {
+  padding: 10px 12px;
+  font-family: var(--vscode-editor-font-family, "Cascadia Code", Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--vscode-editor-foreground, #cccccc);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* ── Footer ── */
+
+.ic-footer {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vscode-widget-border, #393939);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ic-footer__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ic-footer__nav {
+  display: flex;
+  gap: 6px;
+}
+
+.ic-footer__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.ic-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ic-btn:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, #007acc);
+  outline-offset: 2px;
+}
+
+.ic-btn--primary {
+  background: var(--vscode-button-background, #007acc);
+  color: var(--vscode-button-foreground, #ffffff);
+}
+
+.ic-btn--primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground, #0062a3);
+}
+
+.ic-btn--primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ic-btn--secondary {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #cccccc);
+}
+
+.ic-btn--secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+
+.ic-btn--ghost {
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #999);
+  padding: 6px 10px;
+}
+
+.ic-btn--ghost:hover {
+  color: var(--vscode-editor-foreground, #ccc);
+  background: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+
+.ic-btn--ghost:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Keyboard Hints ── */
+
+.ic-hints {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #666);
+}
+
+.ic-hints__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--vscode-widget-border, #444);
+  border-radius: 3px;
+  background: var(--vscode-editorGroupHeader-tabsBackground, #2a2a2a);
+  color: var(--vscode-descriptionForeground, #999);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── Empty State ── */
+
+.ic-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--vscode-descriptionForeground, #888);
+  font-style: italic;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 480px) {
+  .ic-container {
+    padding: 12px;
+  }
+
+  .ic-tab {
+    padding: 6px 10px 8px;
+    font-size: 11px;
+  }
+
+  .ic-tab__index {
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+
+  .ic-option {
+    padding: 8px 10px;
+  }
+
+  .ic-footer__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .ic-footer__buttons {
+    justify-content: flex-end;
+  }
+
+  .ic-hints {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+webview-dist/
+*.vsix
+.DS_Store
+*.sock

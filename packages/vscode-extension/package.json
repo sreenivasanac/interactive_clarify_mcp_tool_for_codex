@@ -1,0 +1,48 @@
+{
+  "name": "interactive-clarify-vscode",
+  "displayName": "Interactive Clarify",
+  "description": "Rich UI for AI coding agent clarifying questions via MCP",
+  "version": "0.1.0",
+  "publisher": "interactive-clarify",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "interactiveClarify.showPanel",
+        "title": "Interactive Clarify: Show Questions Panel"
+      }
+    ]
+  },
+  "scripts": {
+    "build:webview": "esbuild src/webview/panel/index.tsx --bundle --outfile=webview-dist/panel.js --format=iife --target=es2020 --loader:.css=css --define:process.env.NODE_ENV=\\\"production\\\"",
+    "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --format=cjs --platform=node --external:vscode",
+    "build": "pnpm run build:webview && pnpm run build:extension",
+    "dev": "pnpm run build",
+    "package": "pnpm run build && vsce package"
+  },
+  "dependencies": {
+    "@interactive-clarify/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@markdown-ui/marked-ext": "^1.4.0",
+    "@markdown-ui/react": "^0.4.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.25.0",
+    "marked": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.0"
+  }
+}

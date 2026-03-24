@@ -1,0 +1,13 @@
+{
+  "name": "interactive-clarify",
+  "private": true,
+  "description": "Universal 'Ask User Questions' MCP tool for AI coding agents",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "pnpm -r exec rm -rf dist webview-dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
