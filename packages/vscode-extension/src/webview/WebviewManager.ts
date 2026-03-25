@@ -16,6 +16,16 @@ export class WebviewManager {
     this.context = context;
   }
 
+  revealLatestPanel(): boolean {
+    const latestPanel = Array.from(this.panelsByRequestId.values()).at(-1);
+    if (!latestPanel) {
+      return false;
+    }
+
+    latestPanel.reveal(latestPanel.viewColumn ?? vscode.ViewColumn.One);
+    return true;
+  }
+
   /**
    * Create and display a webview panel showing the given questions.
    *

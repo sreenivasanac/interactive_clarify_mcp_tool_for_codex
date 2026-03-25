@@ -1,25 +1,61 @@
 {
   "name": "interactive-clarify-vscode",
   "displayName": "Interactive Clarify",
-  "description": "Rich UI for AI coding agent clarifying questions via MCP",
+  "description": "Structured clarifying-question panel for MCP-based AI coding agents in VS Code",
   "version": "0.1.0",
   "publisher": "interactive-clarify",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sreenivasanac/interactive_clarify_mcp_tool_for_codex.git"
+  },
+  "homepage": "https://github.com/sreenivasanac/interactive_clarify_mcp_tool_for_codex#readme",
+  "bugs": {
+    "url": "https://github.com/sreenivasanac/interactive_clarify_mcp_tool_for_codex/issues"
+  },
   "engines": {
     "vscode": "^1.95.0"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agent",
+    "coding-agent",
+    "clarifying-questions",
+    "codex",
+    "claude-code",
+    "webview"
+  ],
   "categories": [
-    "Other"
+    "Machine Learning",
+    "Visualization"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:interactiveClarify.showPanel",
+    "onCommand:interactiveClarify.showOutput",
+    "onCommand:interactiveClarify.openLateResponsesFolder"
+  ],
+  "extensionKind": [
+    "workspace"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "interactiveClarify.showPanel",
-        "title": "Interactive Clarify: Show Questions Panel"
+        "category": "Interactive Clarify",
+        "title": "Show Questions Panel"
+      },
+      {
+        "command": "interactiveClarify.showOutput",
+        "category": "Interactive Clarify",
+        "title": "Show Output Log"
+      },
+      {
+        "command": "interactiveClarify.openLateResponsesFolder",
+        "category": "Interactive Clarify",
+        "title": "Open Late Responses Folder"
       }
     ]
   },
@@ -28,7 +64,7 @@
     "build:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --format=cjs --platform=node --external:vscode",
     "build": "pnpm run build:webview && pnpm run build:extension",
     "dev": "pnpm run build",
-    "package": "pnpm run build && vsce package"
+    "package": "pnpm run build && vsce package --no-dependencies"
   },
   "dependencies": {
     "@interactive-clarify/shared": "workspace:*"

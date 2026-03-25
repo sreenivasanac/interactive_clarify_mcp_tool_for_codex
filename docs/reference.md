@@ -195,8 +195,15 @@ The VS Code integration layer:
 
 Operational notes:
 
-- extension command: `interactiveClarify.showPanel`
-- activation: `onStartupFinished`
+- extension commands:
+  - `interactiveClarify.showPanel`
+  - `interactiveClarify.showOutput`
+  - `interactiveClarify.openLateResponsesFolder`
+- activation:
+  - `onStartupFinished`
+  - `onCommand:interactiveClarify.showPanel`
+  - `onCommand:interactiveClarify.showOutput`
+  - `onCommand:interactiveClarify.openLateResponsesFolder`
 - browser fallback reuses `webview-dist/panel.js` and `panel.css`
 
 ## Troubleshooting

@@ -88,9 +88,9 @@ code --install-extension interactive-clarify-vscode-0.1.0.vsix
 
 > **Note:** `pnpm run package` uses `vsce` which is included as a devDependency. If you see `vsce: command not found`, make sure you've run `pnpm install` first.
 >
-> The `--no-dependencies` flag is used automatically because `vsce` runs `npm list` internally, which conflicts with pnpm workspaces. If packaging fails with npm dependency errors, run manually:
+> The package script already passes `--no-dependencies` because `vsce` runs `npm list` internally, which conflicts with pnpm workspaces. If you need to run it manually:
 > ```bash
-> npx @vscode/vsce package --no-dependencies --allow-missing-repository
+> npx @vscode/vsce package --no-dependencies
 > ```
 
 The extension activates automatically on VS Code startup and listens for incoming questions on a Unix socket.

@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { IpcServer } from "./ipc-server";
 import { WebviewManager } from "./webview/WebviewManager";
 import type { QuestionRequest, QuestionResponse } from "@interactive-clarify/shared";
+import { ensureLateResponseDir } from "./lateResponseStore";
 
 let ipcServer: IpcServer | undefined;
 let activeWebviewManager: WebviewManager | undefined;
@@ -51,16 +52,43 @@ export function activate(context: vscode.ExtensionContext): void {
   const showPanelCmd = vscode.commands.registerCommand(
     "interactiveClarify.showPanel",
     () => {
+      if (activeWebviewManager?.revealLatestPanel()) {
+        return;
+      }
+
       vscode.window.showInformationMessage(
         "Interactive Clarify: Waiting for questions from an MCP client..."
       );
     }
   );
 
+  const showOutputCmd = vscode.commands.registerCommand(
+    "interactiveClarify.showOutput",
+    () => {
+      outputChannel.show();
+    }
+  );
+
+  const openLateResponsesFolderCmd = vscode.commands.registerCommand(
+    "interactiveClarify.openLateResponsesFolder",
+    async () => {
+      const lateResponseDir = ensureLateResponseDir();
+      const didOpen = await vscode.env.openExternal(vscode.Uri.file(lateResponseDir));
+
+      if (!didOpen) {
+        vscode.window.showInformationMessage(
+          `Interactive Clarify late responses folder: ${lateResponseDir}`
+        );
+      }
+    }
+  );
+
   context.subscriptions.push(
     { dispose: () => ipcServer?.stop() },
     outputChannel,
-    showPanelCmd
+    showPanelCmd,
+    showOutputCmd,
+    openLateResponsesFolderCmd
   );
 }
 
